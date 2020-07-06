@@ -36,10 +36,7 @@ let rec partitionAttributes ?(partDoc=false) ?(allowUncurry=true) attrs : attrib
   | ({ attr_name = {txt="ocaml.doc"}; _} as doc)::atTl when partDoc = true ->
     let partition = partitionAttributes ~partDoc ~allowUncurry atTl in
     {partition with docAttrs=doc::partition.docAttrs}
-  | ({ attr_name = {txt="reason.raw_literal"}; _} as attr) :: atTl ->
-    let partition = partitionAttributes ~partDoc ~allowUncurry atTl in
-    {partition with stylisticAttrs=attr::partition.stylisticAttrs}
-  | ({ attr_name = {txt="reason.preserve_braces"}; _} as attr) :: atTl ->
+  | ({ attr_name = {txt="reason.raw_literal" | "reason.preserve_braces" | "reason.template"}; _} as attr) :: atTl ->
     let partition = partitionAttributes ~partDoc ~allowUncurry atTl in
     {partition with stylisticAttrs=attr::partition.stylisticAttrs}
   | atHd :: atTl ->
