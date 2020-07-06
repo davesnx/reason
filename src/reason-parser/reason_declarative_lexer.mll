@@ -386,7 +386,7 @@ rule token state = parse
       let word = String.sub s 1 (String.length s - 1) in
       match Hashtbl.find keyword_table word with
       | exception Not_found -> NAMETAG word
-      | kw ->
+      | _ ->
         raise_error (Location.curr lexbuf) (Keyword_as_tag word);
         LIDENT "thisIsABugReportThis"
     }
