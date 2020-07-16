@@ -867,6 +867,7 @@ let class_of_let_bindings lbs body =
     raise_error (Not_expecting (lbs.lbs_loc, "extension")) lbs.lbs_loc;
   Cl.let_ lbs.lbs_rec lbs.lbs_bindings body
 
+
 (*
  * arity_conflict_resolving_mapper is triggered when both "implicit_arity" "explicit_arity"
  * are in the attribtues. In that case we have to remove "explicit_arity"
@@ -1190,6 +1191,7 @@ let add_brace_attr expr =
 %token <string> LIDENT [@recover.expr ""] [@recover.cost 2]
 %token LPAREN
 %token LBRACKETAT
+%token <int * int> VERSION_ATTRIBUTE
 %token OF
 %token PRI
 %token SWITCH
@@ -1436,12 +1438,18 @@ conflicts.
 
 implementation:
   structure EOF
-  { apply_mapper_to_structure $1 reason_mapper }
+  {
+    let itms = Reason_version.Ast_nodes.inject_attr_from_version_impl $1 in
+    apply_mapper_to_structure itms reason_mapper
+  }
 ;
 
 interface:
   signature EOF
-  { apply_mapper_to_signature $1 reason_mapper }
+  {
+    let itms = Reason_version.Ast_nodes.inject_attr_from_version_intf $1 in
+    apply_mapper_to_signature itms reason_mapper
+  }
 ;
 
 toplevel_phrase: embedded
@@ -4992,6 +5000,19 @@ attr_id:
 ;
 
 attribute:
+  | VERSION_ATTRIBUTE
+    {
+      (* Just ignore the attribute in the AST at this point, but record its version,
+       * then we wil add it back at the "top" of the file. *)
+      let major, minor = $1 in
+      Reason_version.set_explicit (major, minor);
+      let attr_payload = Reason_version.Ast_nodes.mk_version_attr_payload major minor in
+      let loc = mklocation $symbolstartpos $endpos in
+      { attr_name = {loc; txt="reason.version"};
+        attr_payload;
+        attr_loc = loc
+      }
+    }
   | LBRACKETAT attr_id payload RBRACKET
     {
       { attr_name = $2;

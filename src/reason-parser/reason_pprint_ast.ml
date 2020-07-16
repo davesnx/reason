@@ -8288,10 +8288,29 @@ let add_explicit_arity_mapper super =
   in
   { super with Ast_mapper. expr; pat }
 
+(** Doesn't actually "map", but searches for version number in AST and records
+ * it if present. Needs to be executed before printing. *)
+let record_version_mapper super =
+  let super_structure_item = super.Ast_mapper.structure_item in
+  let super_signature_item = super.Ast_mapper.signature_item in
+  let structure_item mapper structure_item =
+    (match Reason_version.Ast_nodes.extract_version_attribute_structure_item structure_item with
+    | None -> ()
+    | Some(mjr, mnr) -> Reason_version.set_explicit (mjr, mnr));
+    super_structure_item mapper structure_item
+  in
+  let signature_item mapper signature_item =
+    (match Reason_version.Ast_nodes.extract_version_attribute_signature_item signature_item with
+    | None -> ()
+    | Some(mjr, mnr) -> Reason_version.set_explicit (mjr, mnr));
+    super_signature_item mapper signature_item
+  in
+  { super with Ast_mapper.structure_item; Ast_mapper.signature_item }
+
 let preprocessing_mapper =
   ml_to_reason_swap_operator_mapper
-    (escape_stars_slashes_mapper
-      (add_explicit_arity_mapper Ast_mapper.default_mapper))
+    (record_version_mapper (escape_stars_slashes_mapper
+      (add_explicit_arity_mapper Ast_mapper.default_mapper)))
 
 let core_type ppf x =
   format_layout ppf
@@ -8304,12 +8323,16 @@ let pattern ppf x =
 let signature (comments : Comment.t list) ppf x =
   List.iter (fun comment -> printer#trackComment comment) comments;
   format_layout ppf ~comments
-    (printer#signature (apply_mapper_to_signature x preprocessing_mapper))
+    (printer#signature
+      (Reason_version.Ast_nodes.inject_attr_from_version_intf
+        (apply_mapper_to_signature x preprocessing_mapper)))
 
 let structure (comments : Comment.t list) ppf x =
   List.iter (fun comment -> printer#trackComment comment) comments;
   format_layout ppf ~comments
-    (printer#structure (apply_mapper_to_structure x preprocessing_mapper))
+    (printer#structure
+      (Reason_version.Ast_nodes.inject_attr_from_version_impl
+        (apply_mapper_to_structure x preprocessing_mapper)))
 
 let expression ppf x =
   format_layout ppf

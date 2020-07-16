@@ -1,3 +1,4 @@
+[@reason.version 3.7];
 class type _module ('provider_impl) = {};
 type t;
 class type bzz = {
