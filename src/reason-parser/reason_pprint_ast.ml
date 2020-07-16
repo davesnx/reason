@@ -1063,6 +1063,19 @@ let makeTup ?(wrap=("", ""))?(trailComma=true) ?(uncurried = false) l =
     ~sep:(if trailComma then commaTrail else commaSep)
     ~postSpace:true
     ~break:IfNeed l
+    
+(* Makes angle brackets < > *)
+let typeParameterBookends ?(wrap=("", ""))?(trailComma=true) l =
+  let useAngle = Reason_version.supports Reason_version.AngleBracketTypes in
+  let left = if useAngle then "<" else "(" in
+  let right = if useAngle then ">" else ")" in
+  let (lwrap, rwrap) = wrap in
+  let lparen = lwrap ^ left in
+  makeList
+    ~wrap:(lparen, right ^ rwrap)
+    ~sep:(if trailComma then commaTrail else commaSep)
+    ~postSpace:true
+    ~break:IfNeed l
 
 let ensureSingleTokenSticksToLabel x =
   let listConfigIfCommentsInterleaved cfg =
@@ -2546,7 +2559,7 @@ let printer = object(self:'self)
 
     let labelWithParams = match formattedTypeParams with
       | [] -> binding
-      | l -> label binding (makeTup l)
+      | l -> label binding (typeParameterBookends l)
     in
     let everythingButConstraints =
       let nameParamsEquals = makeList ~postSpace:true [labelWithParams; assignToken] in
@@ -2598,7 +2611,7 @@ let printer = object(self:'self)
     let binding = makeList ~postSpace:true (prepend::name::[]) in
     let labelWithParams = match formattedTypeParams with
       | [] -> binding
-      | l -> label binding (makeTup l)
+      | l -> label binding (typeParameterBookends l)
     in
     let everything =
       let nameParamsEquals = makeList ~postSpace:true [labelWithParams; assignToken] in
@@ -2754,7 +2767,7 @@ let printer = object(self:'self)
       let ct = self#core_type arg in
       let ct = match arg.ptyp_desc with
         | Ptyp_tuple _ -> ct
-        | _ -> makeTup [ct]
+        | _ -> typeParameterBookends [ct]
       in
       if i == 0 && not opt_ampersand then
         ct
@@ -3091,6 +3104,7 @@ let printer = object(self:'self)
             | [{ptyp_desc = Ptyp_constr(lii, [{ ptyp_desc = Ptyp_object (_::_ as ll, o)}])}]
               when isJsDotTLongIdent lii.txt ->
               label (self#longident_loc li)
+                (* ADD TEST CASE FOR THIS *)
                 (self#unparseObject ~withStringKeys:true ~wrap:("(",")") ll o)
             | _ ->
               (* small guidance: in `type foo = bar`, we're now at the `bar` part *)
@@ -3099,7 +3113,7 @@ let printer = object(self:'self)
                  avoid (@see @avoidSingleTokenWrapping): *)
               label
                 (self#longident_loc li)
-                (makeTup (
+                (typeParameterBookends (
                   List.map self#type_param_list_element l
                 ))
             )
@@ -3137,7 +3151,7 @@ let printer = object(self:'self)
         | Ptyp_class (li, l) ->
           label
             (makeList [atom "#"; self#longident_loc li])
-            (makeTup (List.map self#core_type l))
+            (typeParameterBookends (List.map self#core_type l))
         | Ptyp_extension e -> self#extension e
         | Ptyp_arrow (_, _, _)
         | Ptyp_alias (_, _)
@@ -7104,7 +7118,7 @@ let printer = object(self:'self)
       | Pcl_constr (li, l) ->
         label
           (makeList ~postSpace:true [atom "class"; self#longident_loc li])
-          (makeTup (List.map self#non_arrowed_non_simple_core_type l))
+          (typeParameterBookends (List.map self#non_arrowed_non_simple_core_type l))
       | Pcl_open _
       | Pcl_constraint _
       | Pcl_extension _
