@@ -22,7 +22,7 @@ type package_version = {
 
 type feature =
   | AngleBracketTypes
-  
+
 (**
  * Tracks the current package version of Reason parser/printer. This is
  * primarily for printing the version with `refmt --version`.
@@ -77,7 +77,7 @@ let within
 
 let at_least (major, minor) =
   within ~inclusive:true (major, minor) ~inclusive:true (10000,0)
-  
+
 let supports = function
   | AngleBracketTypes -> at_least (3, 8)
 
@@ -102,6 +102,11 @@ let _split_on_char sep_char str =
   String.sub str 0 j.contents :: r.contents
 
 module Ast_nodes = struct
+  let mk_warning_attribute_payload ~loc msg =
+    let exp = Exp.mk ~loc  (Pexp_constant (Pconst_string(msg, None))) in
+    let item = { pstr_desc = Pstr_eval (exp, []); pstr_loc = exp.pexp_loc } in
+    PStr [item]
+
   let mk_version_attr_payload major minor =
     let major, minor = string_of_int major, string_of_int minor in
     let loc = dummy_loc () in
@@ -122,7 +127,26 @@ module Ast_nodes = struct
         first :: created :: rest
       | _ -> created :: itms
       )
-    | Some efv -> itms
+    | Some efv -> begin
+        if efv.major > package_version.major ||
+            (efv.major == package_version.major && efv.minor > package_version.minor) then
+          let efv_mjr = string_of_int efv.major in
+          let efv_mnr = string_of_int efv.minor in
+          let pkg_mjr = string_of_int package_version.major in
+          let pkg_mnr = string_of_int package_version.minor in
+          let msg =
+            "This file specifies a reason.version " ^ efv_mjr ^ "." ^ efv_mnr ^
+            " which is greater than the package version " ^ pkg_mjr ^ "." ^ pkg_mnr ^
+            " Either upgrade the Reason package or lower the version specified in [@reason.version ]." in
+          (* let loc = match itms with *)
+          (* | hd :: _ -> hd.pstr_loc *)
+          (* | [] -> loc *)
+          (* in *)
+          let attr_payload = mk_warning_attribute_payload ~loc msg in
+          let created = (creator ~loc {attr_name={loc; txt="ocaml.ppwarn"}; attr_payload; attr_loc=loc}) in
+          created :: itms
+        else itms
+    end
 
   let inject_attr_from_version_impl itms =
     let insert_after = function
@@ -131,7 +155,7 @@ module Ast_nodes = struct
     in
     let creator = (fun ~loc x -> Str.mk ~loc (Pstr_attribute x)) in
     inject_attr_from_version itms ~insert_after ~creator
-  
+
   let inject_attr_from_version_intf itms =
     let insert_after = function
       | {psig_desc = Psig_attribute {attr_name = {loc; txt="ocaml.doc"|"ocaml.text"}}} -> true
@@ -139,7 +163,7 @@ module Ast_nodes = struct
     in
     let creator = (fun ~loc x -> Sig.mk ~loc (Psig_attribute x)) in
     inject_attr_from_version itms ~insert_after ~creator
-    
+
   let extract_version_attribute_structure_item structure_item =
     (match structure_item with
     | {pstr_desc=(Pstr_attribute {

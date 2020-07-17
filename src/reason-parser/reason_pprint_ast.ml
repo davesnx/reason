@@ -294,6 +294,14 @@ let expandLocation pos ~expand:(startPos, endPos) =
     }
   }
 
+let should_keep_floating_stylistic_structure_attr = function
+  | {pstr_desc=Pstr_attribute a; _} -> not (Reason_attributes.is_stylistic_attr a)
+  | _ -> true
+
+let should_keep_floating_stylistic_sig_attr = function
+  | {psig_desc=Psig_attribute a; _} -> not (Reason_attributes.is_stylistic_attr a)
+  | _ -> true
+
 (* Computes the location of the attribute with the lowest line number
  * that isn't ghost. Useful to determine the start location of an item
  * in the parsetree that has attributes.
@@ -1063,7 +1071,7 @@ let makeTup ?(wrap=("", ""))?(trailComma=true) ?(uncurried = false) l =
     ~sep:(if trailComma then commaTrail else commaSep)
     ~postSpace:true
     ~break:IfNeed l
-    
+
 (* Makes angle brackets < > *)
 let typeParameterBookends ?(wrap=("", ""))?(trailComma=true) l =
   let useAngle = Reason_version.supports Reason_version.AngleBracketTypes in
@@ -7582,7 +7590,7 @@ let printer = object(self:'self)
           ~xf:self#structure_item
           ~getLoc:(fun x -> x.pstr_loc)
           ~comments:self#comments
-          structureItems
+          (List.filter should_keep_floating_stylistic_structure_attr structureItems)
       in
       source_map ~loc:{loc_start; loc_end; loc_ghost = false}
         (makeList
@@ -8321,10 +8329,28 @@ let record_version_mapper super =
   in
   { super with Ast_mapper.structure_item; Ast_mapper.signature_item }
 
+(* These won't get removed from partitioning since they are individual floating
+ * attributes *)
+let remove_floating_style_attributes super =
+  let super_structure = super.Ast_mapper.structure in
+  let super_signature = super.Ast_mapper.signature in
+  let structure mapper structure =
+    super_structure
+      mapper
+      (List.filter should_keep_floating_stylistic_structure_attr structure)
+  in
+  let signature mapper signature =
+    super_signature
+      mapper
+      (List.filter should_keep_floating_stylistic_sig_attr signature)
+  in
+  { super with Ast_mapper.structure; Ast_mapper.signature }
+
 let preprocessing_mapper =
   ml_to_reason_swap_operator_mapper
-    (record_version_mapper (escape_stars_slashes_mapper
-      (add_explicit_arity_mapper Ast_mapper.default_mapper)))
+    (remove_floating_style_attributes
+      (record_version_mapper (escape_stars_slashes_mapper
+        (add_explicit_arity_mapper Ast_mapper.default_mapper))))
 
 let core_type ppf x =
   format_layout ppf
