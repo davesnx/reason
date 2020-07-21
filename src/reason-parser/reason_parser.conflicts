@@ -1,10 +1,10 @@
 
-** Conflict (shift/reduce) in state 1219.
-** Tokens involved: SLASHGREATER QUESTION LPAREN INFIXOP3 GREATERDOTDOTDOT GREATER DOT
-** The following explanations concentrate on token LPAREN.
+** Conflict (reduce/reduce) in state 1461.
+** Tokens involved: RPAREN COMMA
+** The following explanations concentrate on token RPAREN.
 ** This state is reached from implementation after reading:
 
-unattributed_expr GREATER LESS UIDENT 
+CLASS virtual_flag LIDENT LPAREN UNDERSCORE 
 
 ** The derivations that appear below have the following common factor:
 ** (The question mark symbol (?) represents the spot where the derivations begin to differ.)
@@ -12,27 +12,28 @@ unattributed_expr GREATER LESS UIDENT
 implementation 
 structure EOF 
 structure_item 
-unattributed_expr 
-(?)
+CLASS class_declaration_details list(and_class_declaration) 
+      (?)
 
-** In state 1219, looking ahead at LPAREN, shifting is permitted
-** because of the following sub-derivation:
-
-unattributed_expr GREATER expr 
-                          simple_expr_call 
-                          jsx 
-                          jsx_start_tag_and_args SLASHGREATER 
-                          LESS mod_ext_longident jsx_arguments 
-                               mod_ext_apply 
-                               UIDENT . LPAREN lseparated_nonempty_list_aux(COMMA,mod_ext_longident) RPAREN 
-
-** In state 1219, looking ahead at LPAREN, reducing production
-** mod_longident -> UIDENT 
+** In state 1461, looking ahead at RPAREN, reducing production
+** embedded(__anonymous_33) -> UNDERSCORE 
 ** is permitted because of the following sub-derivation:
 
-unattributed_expr GREATER LESS expr 
-                               simple_expr_call 
-                               simple_expr_call labeled_arguments // lookahead token appears because labeled_arguments can begin with LPAREN
-                               constr_longident // lookahead token is inherited
-                               mod_longident // lookahead token is inherited
-                               UIDENT . 
+virtual_flag LIDENT LPAREN type_variables_with_variance_comma_list RPAREN class_declaration_body // lookahead token appears
+                           lseparated_nonempty_list_aux(COMMA,type_variable_with_variance) option(COMMA) // lookahead token is inherited because option(COMMA) can vanish
+                           type_variable_with_variance // lookahead token is inherited
+                           embedded(__anonymous_33) // lookahead token is inherited
+                           UNDERSCORE . 
+
+** In state 1461, looking ahead at RPAREN, reducing production
+** simple_pattern_not_ident -> UNDERSCORE 
+** is permitted because of the following sub-derivation:
+
+virtual_flag LIDENT LPAREN lseparated_nonempty_list_aux(COMMA,labeled_pattern) option(COMMA) RPAREN class_declaration_body // lookahead token appears because option(COMMA) can vanish
+                           labeled_pattern // lookahead token is inherited
+                           pattern_optional_constraint // lookahead token is inherited
+                           pattern // lookahead token is inherited
+                           pattern_without_or // lookahead token is inherited
+                           simple_pattern // lookahead token is inherited
+                           simple_pattern_not_ident // lookahead token is inherited
+                           UNDERSCORE . 

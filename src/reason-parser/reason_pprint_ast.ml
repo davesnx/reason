@@ -2461,7 +2461,7 @@ let printer = object(self:'self)
   (* c ['a,'b] *)
   method class_params_def = function
     | [] -> atom ""
-    | l -> makeTup (List.map self#type_param l)
+    | l -> typeParameterBookends (List.map self#type_param l)
 
   (* This will fall through to the simple version. *)
   method non_arrowed_core_type x = self#non_arrowed_non_simple_core_type x
@@ -6762,7 +6762,7 @@ let printer = object(self:'self)
         | _::_ ->
           label
             (self#longident_loc li)
-            (makeList ~wrap:("(", ")") ~sep:commaTrail (List.map self#core_type l))
+            (typeParameterBookends (List.map self#core_type l))
       )
     | Pcty_extension e ->
       self#attach_std_item_attrs x.pcty_attributes (self#extension e)
@@ -6819,7 +6819,7 @@ let printer = object(self:'self)
           label ~space:true (atom opener) (atom pci_name.txt)
         else
           label
-            ~space:true
+            ~space:false
             (label ~space:true (atom opener) (atom pci_name.txt))
             (self#class_params_def ls)
       in

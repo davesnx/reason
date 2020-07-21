@@ -2,91 +2,93 @@
 
 [@reason.version 3.8];
 
-class virtual stack('a)(init) {
+class virtual stack('a) (init) = {
   /*
    * The "as this" is implicit and will be formatted away.
    */
-  as this;
-  val virtual dummy : unit;
-  val mutable v : list('a) = init;
-
-  pub virtual implementMe: (int) => int;
+  val virtual dummy: unit;
+  val mutable v: list<'a> = init;
+  pub virtual implementMe: int => int;
   pub pop =
     switch (v) {
-      | [hd, ...tl] => {
-        v = tl;
-        Some(hd);
-      }
-      | [] => None
+    | [hd, ...tl] =>
+      v = tl;
+      Some(hd);
+    | [] => None
     };
-
-  pub push(hd) {v = [hd, ...v]};
+  pub push = hd => {
+    v = [hd, ...v];
+  };
   initializer {
     print_string("initializing object");
   };
-  pub explicitOverrideTest(a) { a + 1 };
-  pri explicitOverrideTest2(a) { a + 1 };
+  pub explicitOverrideTest = a => {
+    a + 1;
+  };
+  pri explicitOverrideTest2 = a => {
+    a + 1;
+  };
 };
 
 let tmp = {
   /**
    * comment here.
-   */
-  as this;
-  val x = 10;
+   */;
+  val x = 10
 };
 
 /**
  * Comment on stackWithAttributes.
  */
 [@thisShouldntBeFormattedAway]
-class virtual stackWithAttributes('a)(init)
-/* Before class */
-{
-
+class virtual stackWithAttributes ('a) (init) = {
+  /* Before class */
   /* The "as this" should not be formatted away because attributes. */
-
   as [@thisShouldntBeFormattedAway] this;
   /* Before floatting attribute */
   [@floatingAttribute];
   /* Virtual member */
-  [@itemAttr1]
-  val virtual dummy : unit;
-  [@itemAttr2]
-  val mutable v : list('a) = init;
-
-  pub virtual implementMe: (int) => int;
+  [@itemAttr1] val virtual dummy: unit;
+  [@itemAttr2] val mutable v: list<'a> = init;
+  pub virtual implementMe: int => int;
   pub pop =
     switch (v) {
-      | [hd, ...tl] => {
-        v = tl;
-        Some(hd);
-      }
-      | [] => None
+    | [hd, ...tl] =>
+      v = tl;
+      Some(hd);
+    | [] => None
     };
-
-  pub push(hd) {v = [hd, ...v]};
+  pub push = hd => {
+    v = [hd, ...v];
+  };
   initializer {
     print_string("initializing object");
   };
-}
-;
-
-class extendedStack('a)(init) {
-  inherit (class stack('a))(init);
-  val dummy = ();
-  pub implementMe(i) = i;
 };
 
-class extendedStackAcknowledgeOverride('a)(init) {
-  inherit (class stack('a))(init);
+class extendedStack ('a) (init) = {
+  inherit (class stack<'a>)(init);
   val dummy = ();
-  pub implementMe(i) { i + 1 };
-  pub! explicitOverrideTest(a) { a + 2 };
-  pri! explicitOverrideTest2(a) { a + 2 };
+  pub implementMe = i => i;
 };
 
-let inst = new extendedStack([1, 2]);
+class extendedStackAcknowledgeOverride
+      ('a)
+      (init) = {
+  inherit (class stack<'a>)(init);
+  val dummy = ();
+  pub implementMe = i => {
+    i + 1;
+  };
+  pub! explicitOverrideTest = a => {
+    a + 2;
+  };
+  pri! explicitOverrideTest2 = a => {
+    a + 2;
+  };
+};
+
+let inst = (new extendedStack)([1, 2]);
 
 /**
  * Recursive classes.
@@ -94,17 +96,15 @@ let inst = new extendedStack([1, 2]);
 /*
  * First recursive class.
  */
-class firstRecursiveClass(init) {
+class firstRecursiveClass (init) = {
   val v = init;
 }
 /*
  * Second recursive class.
  */
-and secondRecursiveClass(init) {
+and secondRecursiveClass (init) = {
   val v = init;
 };
-
-
 
 /**
  * For now, mostly for historic reasons, the syntax for type
@@ -124,77 +124,140 @@ and secondRecursiveClass(init) {
 
 type closedObj = {.};
 
-let (<..>)(a,b) = a + b;
+let (<..>) = (a, b) => a + b;
 let five = 2 <..> 3;
 
-type nestedObj = {. bar : {. a: int}};
+type nestedObj = {. bar: {. a: int}};
 
-let (>>)(a,b) = a > b;
+let (>>) = (a, b) => a > b;
 
 let bigger = 3 >> 2;
 
-type typeDefForClosedObj = {. x: int, y:int};
-type typeDefForOpenObj('a) = {.. x:int, y:int} as 'a;
-let anonClosedObject: {. x:int, y:int} = {
-  pub x { 0 };
-  pub y { 0 };
+type typeDefForClosedObj = {
+  .
+  x: int,
+  y: int,
+};
+type typeDefForOpenObj<'a> =
+  {
+    ..
+    x: int,
+    y: int,
+  } as 'a;
+let anonClosedObject: {
+  .
+  x: int,
+  y: int,
+} = {
+  pub x = {
+    0;
+  };
+  pub y = {
+    0;
+  }
 };
 
 let onlyHasX = {pub x = 0};
-let xs: list({. x:int}) = [onlyHasX, anonClosedObject :> {. x: int}];
+let xs: list({. x: int}) = [
+  onlyHasX,
+  (anonClosedObject :> {. x: int}),
+];
 
-let constrainedAndCoerced =
-  ([anonClosedObject, anonClosedObject] : list({. x:int, y:int}) :> list({. x:int}));
+let constrainedAndCoerced = (
+  [anonClosedObject, anonClosedObject]:
+    list({
+      .
+      x: int,
+      y: int,
+    }) :>
+    list({. x: int})
+);
 
 /* If one day, unparenthesized type constraints are allowed on the RHS of a
  * record value, we're going to have to be careful here because >} is parsed as
  * a separate kind of token (for now). Any issues would likely be caught in the
  * idempotent test case.
  */
-let xs: ref({. x:int}) = {contents: (anonClosedObject :> {. x: int})};
+let xs: ref({. x: int}) = {
+  contents: (anonClosedObject :> {. x: int}),
+};
 
 let coercedReturn = {
   let tmp = anonClosedObject;
-  (tmp :> {. x: int})
+  (tmp :> {. x: int});
 };
 
-let acceptsOpenAnonObjAsArg (o: {.. x: int, y:int}) = o#x + o#y;
-let acceptsClosedAnonObjAsArg (o: {. x: int, y:int}) = o#x + o#y;
-let res = acceptsOpenAnonObjAsArg {
-  pub x = 0;
-  pub y = 10;
-};
+let acceptsOpenAnonObjAsArg =
+    (
+      o: {
+        ..
+        x: int,
+        y: int,
+      },
+    ) =>
+  o#x + o#y;
+let acceptsClosedAnonObjAsArg =
+    (
+      o: {
+        .
+        x: int,
+        y: int,
+      },
+    ) =>
+  o#x + o#y;
+let res =
+  acceptsOpenAnonObjAsArg({
+    pub x = 0;
+    pub y = 10
+  });
 
-let res = acceptsOpenAnonObjAsArg {
-  pub x = 0;
-  pub y = 10;
-  pub z = 10;
-};
+let res =
+  acceptsOpenAnonObjAsArg({
+    pub x = 0;
+    pub y = 10;
+    pub z = 10
+  });
 
-let res = acceptsClosedAnonObjAsArg {
-  pub x = 0;
-  pub y = 10;
-};
+let res =
+  acceptsClosedAnonObjAsArg({
+    pub x = 0;
+    pub y = 10
+  });
 
 /* TODO: Unify class constructor return values with function return values */
-class myClassWithAnnotatedReturnType(init) : {pub x : int; pub y : int} {
-  pub x = ( init : int );
+class myClassWithAnnotatedReturnType
+      (init)
+      : {
+          pub x: int;
+          pub y: int;
+        } = {
+  pub x: int = init;
   pub y = init;
 };
 /**
  * May include a trailing semi after type row.
  */
-class myClassWithAnnotatedReturnType2(init):{pub x : int; pub y : int;} {
-  pub x = ( init : int );
+class myClassWithAnnotatedReturnType2
+      (init)
+      : {
+          pub x: int;
+          pub y: int;
+        } = {
+  pub x: int = init;
   pub y = init;
 };
 
 /**
  * May use equals sign, and may include colon if so.
  */
-class myClassWithAnnotatedReturnType3(init):{pub x : int; pub y : int;} {
-  pub x = ( init : int );
-  pub y:int = init;
+class myClassWithAnnotatedReturnType3
+      (init)
+      : {
+          pub x: int;
+          pub y: int;
+        } = {
+  pub x: int = init;
+  pub y: int = init;
 };
 
 /**
@@ -216,71 +279,89 @@ class myClassWithAnnotatedReturnType3(init):{pub x : int; pub y : int;} {
  * deferring whether or not that becomes a Pcty_constr or a Ptyp_constr. (The
  * same for type identifiers and extensions.)
  */
-class myClassWithAnnotatedReturnType3_annotated_constructor :
-      (int) => {pub x : int; pub y : int;} =
-  (init) => {
-    pub x = ( init : int );
-    pub y:int = init;
+class myClassWithAnnotatedReturnType3_annotated_constructor:
+  (int) =>
+  {
+    pub x: int;
+    pub y: int;
+  } =
+  fun (init) => {
+    pub x: int = init;
+    pub y: int = init;
   };
 
-class tupleClass('a,'b) (init: ('a, 'b)) {
+class tupleClass ('a, 'b) (init: ('a, 'b)) = {
   pub pr = init;
 };
 
-module HasTupleClasses : {
+module HasTupleClasses: {
   /**
    * exportedClass.
    */
-  class exportedClass: (int) => {pub x : int; pub y : int};
+  class exportedClass:
+    (int) =>
+    {
+      pub x: int;
+      pub y: int;
+    };
   /**
    * anotherExportedClass.
    */
-  class anotherExportedClass('a,'b) : (('a, 'b)) => {pub pr: ('a, 'b)};
+  class anotherExportedClass ('a, 'b):
+    (('a, 'b)) =>
+    {
+      pub pr: ('a, 'b);
+    };
 } = {
   /**
    * exportedClass.
    */
-  class exportedClass = myClassWithAnnotatedReturnType3;
+  class exportedClass =
+    class myClassWithAnnotatedReturnType3;
 
   /**
    * anotherExportedClass.
    */
-  class anotherExportedClass('a,'b) = (class tupleClass('a,'b));
+  class anotherExportedClass ('a, 'b) =
+    class tupleClass<'a, 'b>;
 };
 
-class intTuples = (class tupleClass(int,int));
+class intTuples = class tupleClass<int, int>;
 
-class intTuplesHardcoded = (class tupleClass(int,int))((8, 8));
+class intTuplesHardcoded =
+  (class tupleClass<int, int>)((8, 8));
 
 /**
  * Note that the inner tupleClass doesn't have the "class" prefix because
  * they're not kinds of classes - they're types of *values*.
  * The parens here shouldn't be required.
  */
-class intTuplesTuples = (
-  class tupleClass(
-    (tupleClass(int,int)),
-    (tupleClass(int,int))
-  )
-);
+class intTuplesTuples =
+  class tupleClass<
+    tupleClass<int, int>,
+    tupleClass<int, int>,
+  >;
 
-let x: tupleClass(int,int) = {pub pr = (10, 10);};
+let x: tupleClass<int, int> = {
+  pub pr = (10, 10)
+};
 
-let x: #tupleClass(int,int) = x;
+let x: #tupleClass<int, int> = x;
 
-let incrementMyClassInstance: (int, #tupleClass(int,int)) => #tupleClass(int,int) =
-  (i,inst) => {
+let incrementMyClassInstance:
+  (int, #tupleClass<int, int>) =>
+  #tupleClass<int, int> =
+  (i, inst) => {
     let (x, y) = inst#pr;
-    {pub pr = (x + i, y + i);};
+    {pub pr = (x + i, y + i)};
   };
 
 class myClassWithNoTypeParams = {};
 /**
  * The #myClassWithNoTypeParams should be treated as "simple"
  */
-type optionalMyClassSubtype('a) = option(#myClassWithNoTypeParams) as 'a;
-
-
+type optionalMyClassSubtype<'a> =
+  option< #myClassWithNoTypeParams> as 'a;
 
 /**
  * Remember, "class type" is really "class_instance_type" (which is the type of
@@ -297,40 +378,58 @@ type optionalMyClassSubtype('a) = option(#myClassWithNoTypeParams) as 'a;
 class type addablePointClassType = {
   pub x: int;
   pub y: int;
-  pub add: (addablePointClassType, addablePointClassType) => int;
+  pub add:
+    (
+      addablePointClassType,
+      addablePointClassType
+    ) =>
+    int;
 };
 
 /**
  * Class constructor types can be annotated.
  */
-class addablePoint: (int) => addablePointClassType = fun(init) => {
-  as self;
-  pub add (one: addablePointClassType, two:addablePointClassType) =
-    one#x + two#x + one#y + two#x;
-  pub x = (init : int);
-  pub y = init;
-};
+class addablePoint:
+  (int) => addablePointClassType =
+  fun (init) => {
+    as self;
+    pub add =
+        (
+          one: addablePointClassType,
+          two: addablePointClassType,
+        ) =>
+      one#x + two#x + one#y + two#x;
+    pub x: int = init;
+    pub y = init;
+  };
 
-class addablePoint2 = (fun(init) => {
-  as self;
-  pub add (one: addablePointClassType, two:addablePointClassType) =
-    one#x + two#x + one#y + two#x;
-  pub x = (init : int);
-  pub y = init;
-} : (int) => addablePointClassType);
+class addablePoint2:
+  (int) => addablePointClassType =
+  fun (init) => {
+    as self;
+    pub add =
+        (
+          one: addablePointClassType,
+          two: addablePointClassType,
+        ) =>
+      one#x + two#x + one#y + two#x;
+    pub x: int = init;
+    pub y = init;
+  };
 
 module type T = {
-  class virtual cl('a) : {}
-  and cl2 : {};
+  class virtual cl ('a): {}
+  and cl2: {};
 };
 
-let privacy = {
-    pri x(c) = 5 + c;
-};
+let privacy = {pri x = c => 5 + c};
 
 module Js = {
-  type t('a);
+  type t<'a>;
 };
 
 /* supports trailing comma */
-type stream('a) = {. "observer": ('a => unit) => unit,};
+type stream<'a> = {
+  .
+  "observer": ('a => unit) => unit,
+};

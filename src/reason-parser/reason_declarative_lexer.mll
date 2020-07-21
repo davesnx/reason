@@ -451,6 +451,7 @@ rule token state = parse
     { SHARPEQUAL }
   | "#" operator_chars+
     { SHARPOP (lexeme_operator lexbuf) }
+  (* File name / line number source mapping # n string\n *)
   | "#" [' ' '\t']* (['0'-'9']+ as num) [' ' '\t']*
         ("\"" ([^ '\010' '\013' '"' ] * as name) "\"")?
         [^ '\010' '\013'] * newline

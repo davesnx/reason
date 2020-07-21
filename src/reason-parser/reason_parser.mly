@@ -2010,7 +2010,7 @@ and_class_declaration:
 ;
 
 class_declaration_details:
-  virtual_flag as_loc(LIDENT) ioption(class_type_parameters)
+  virtual_flag as_loc(LIDENT) optional_type_params(type_variable_without_underscore)
   ioption(labeled_pattern_list) class_declaration_body
   {
     let tree = match $4 with
@@ -2018,7 +2018,7 @@ class_declaration_details:
     | Some (lpl, _uncurried) -> lpl
     in
     let body = List.fold_right mkclass_fun tree $5 in
-    let params = match $3 with None -> [] | Some x -> x in
+    let params = $3 in
     ($2, body, $1, params)
   }
 ;
@@ -2327,14 +2327,10 @@ class_constructor_type:
     { List.fold_right mkcty_arrow $1 $3 }
 ;
 
-class_type_arguments_comma_list:
-  | lseparated_nonempty_list(COMMA,core_type) COMMA? {$1}
-;
-
 class_instance_type:
 mark_position_cty
   ( as_loc(clty_longident)
-    loption(parenthesized(class_type_arguments_comma_list))
+    loptioninline(type_parameters)
     { mkcty (Pcty_constr ($1, $2)) }
   | attribute class_instance_type
     (* Note that this will compound attributes - so they will become
@@ -2433,16 +2429,8 @@ and_class_description:
   }
 ;
 
-%inline class_type_parameter_comma_list:
-    | lseparated_nonempty_list(COMMA, type_parameter) COMMA? {$1}
-
-%inline class_type_parameters:
-  parenthesized(class_type_parameter_comma_list)
-  { $1 }
-;
-
-class_description_details:
-  virtual_flag as_loc(LIDENT) loption(class_type_parameters) COLON class_constructor_type
+%inline class_description_details:
+  virtual_flag as_loc(LIDENT) optional_type_params(type_variable_without_underscore) COLON class_constructor_type
   { ($2, $5, $1, $3) }
 ;
 
@@ -2463,8 +2451,8 @@ and_class_type_declaration:
   }
 ;
 
-class_type_declaration_details:
-  virtual_flag as_loc(LIDENT) loption(class_type_parameters)
+%inline class_type_declaration_details:
+  virtual_flag as_loc(LIDENT) optional_type_params(type_variable_with_variance)
   either(preceded(EQUAL,class_instance_type), class_type_body)
   { ($2, $4, $1, $3) }
 ;
@@ -3957,13 +3945,13 @@ and_type_declaration:
     }
 ;
 
-type_declaration_details:
-  | as_loc(UIDENT) type_variables_with_variance type_declaration_kind
+%inline type_declaration_details:
+  | as_loc(UIDENT) optional_type_params(type_variable_with_variance) type_declaration_kind
     { syntax_error $1.loc
         "a type name must start with a lower-case letter or an underscore";
       let (kind, priv, manifest), constraints, endpos, and_types = $3 in
       (($1, $2, constraints, kind, priv, manifest), endpos, and_types) }
-  | as_loc(LIDENT) type_variables_with_variance type_declaration_kind
+  | as_loc(LIDENT) optional_type_params(type_variable_with_variance) type_declaration_kind
     { let (kind, priv, manifest), constraints, endpos, and_types = $3 in
       (($1, $2, constraints, kind, priv, manifest), endpos, and_types) }
 ;
@@ -3992,7 +3980,7 @@ type_subst_kind:
 
 type_subst_declarations:
     item_attributes TYPE nrf=nonrec_flag name=as_loc(LIDENT)
-     params=type_variables_with_variance kind_priv_man=type_subst_kind
+     params=optional_type_params(type_variable_with_variance) kind_priv_man=type_subst_kind
       { check_nonrec_absent (mklocation $startpos(nrf) $endpos(nrf)) nrf;
         let (kind, priv, manifest), cstrs, endpos, and_types = kind_priv_man in
         let ty =
@@ -4006,7 +3994,7 @@ type_subst_declarations:
 and_type_subst_declaration:
   | { [] }
   | item_attributes AND name=as_loc(LIDENT)
-    params=type_variables_with_variance kind_priv_man=type_subst_kind
+    params=optional_type_params(type_variable_with_variance) kind_priv_man=type_subst_kind
     { let (kind, priv, manifest), cstrs, endpos, and_types = kind_priv_man in
       Type.mk name ~params ~cstrs
         ~kind ~priv ?manifest
@@ -4045,24 +4033,15 @@ type_other_kind:
     { (Ptype_record (prepend_attrs_to_labels $5 $6), $4, Some $2) }
 ;
 
-type_variables_with_variance_comma_list:
-  lseparated_nonempty_list(COMMA, type_variable_with_variance) COMMA? {$1}
-;
-
-type_variables_with_variance:
-    | loption(parenthesized(type_variables_with_variance_comma_list))
-    { $1 }
-    (* No need to parse LESSIDENT here, because for
-     * type_variables_with_variance, you'll never have an identifier in any of
-     * the type parameters*)
-    | lessthangreaterthanized(type_variables_with_variance_comma_list)
-    { $1 }
-;
-
-type_variable_with_variance:
+/**
+ * Class syntax cannot accept an underscore for type parameters.
+ * There may be type checking problems, but at the very least it causes
+ * a grammar conflict. The grammar conflict would go away if type parameters
+ * *required* <> instead of also allowing ().
+ */
+%inline type_variable_without_underscore:
   embedded
   ( QUOTE ident       { (mktyp (Ptyp_var $2) , Invariant    ) }
-  | UNDERSCORE        { (mktyp (Ptyp_any)    , Invariant    ) }
   | PLUS QUOTE ident  { (mktyp (Ptyp_var $3) , Covariant    ) }
   | PLUS UNDERSCORE   { (mktyp (Ptyp_any)    , Covariant    ) }
   | MINUS QUOTE ident { (mktyp (Ptyp_var $3) , Contravariant) }
@@ -4076,18 +4055,16 @@ type_variable_with_variance:
   }
 ;
 
-type_parameter: type_variance type_variable { ($2, $1) };
 
-type_variance:
-  | (* empty *) { Invariant }
-  | PLUS        { Covariant }
-  | MINUS       { Contravariant }
+type_variable_with_variance:
+  | type_variable_without_underscore { $1 }
+  | UNDERSCORE        {
+    let first = mktyp Ptyp_any in
+    let second = Invariant in
+    let ptyp_loc = {first.ptyp_loc with loc_start = $symbolstartpos; loc_end = $endpos} in
+    ({first with ptyp_loc}, second)
+  }
 ;
-
-type_variable:
-mark_position_typ
-  (QUOTE ident { mktyp (Ptyp_var $2) })
-  { $1 };
 
 constructor_declarations:
   | BAR and_type_declaration { ([], [], $endpos, $2) }
@@ -4194,7 +4171,7 @@ str_type_extension:
   attrs = item_attributes
   TYPE flag = nonrec_flag
     ident = as_loc(itype_longident)
-    params = type_variables_with_variance
+    params = optional_type_params(type_variable_with_variance)
   PLUSEQ priv = embedded(private_flag)
   constructors =
     attributed_ext_constructors(either(extension_constructor_declaration, extension_constructor_rebind))
@@ -4208,7 +4185,7 @@ sig_type_extension:
   attrs = item_attributes
   TYPE flag = nonrec_flag
     ident = as_loc(itype_longident)
-    params = type_variables_with_variance
+    params = optional_type_params(type_variable_with_variance)
   PLUSEQ priv = embedded(private_flag)
   constructors =
     attributed_ext_constructors(extension_constructor_declaration)
@@ -4253,7 +4230,7 @@ extension_constructor_rebind:
 (* "with" constraints (additional type equations over signature components) *)
 
 with_constraint:
-  | TYPE as_loc(label_longident) type_variables_with_variance
+  | TYPE as_loc(label_longident) optional_type_params(type_variable_with_variance)
       EQUAL embedded(private_flag) core_type constraints
     { let loc = mklocation $symbolstartpos $endpos in
       let typ = Type.mk {$2 with txt=Longident.last $2.txt}
@@ -4262,7 +4239,7 @@ with_constraint:
     }
     (* used label_longident instead of type_longident to disallow
        functor applications in type path *)
-  | TYPE as_loc(label_longident) type_variables_with_variance
+  | TYPE as_loc(label_longident) optional_type_params(type_variable_with_variance)
       COLONEQUAL core_type
     { let last = match $2.txt with
         | Lident s -> s
@@ -5173,5 +5150,27 @@ lseparated_nonempty_list_aux(sep, X):
 
 (*Less than followed by one or more X, then greater than *)
 %inline lessthangreaterthanized(X): delimited(LESS, X, GREATER) { $1 };
+
+(*Less than followed by one or more X, then greater than *)
+%inline loptioninline(X): ioption(X) { match $1 with None -> [] | Some x -> x};
+
+%inline nonempty_comma_list(X):
+  lseparated_nonempty_list(COMMA, X) COMMA? {$1}
+;
+
+(* Allows defining type variable regions that allow certain *kinds* of type
+ * variables depending on context *)
+%inline type_param_group(X):
+  | parenthesized(X)
+  { $1 }
+  (* No need to parse LESSIDENT here, because for
+   * type_param_group, you'll never have an identifier in any of
+   * the type parameters*)
+  | lessthangreaterthanized(X)
+  { $1 }
+;
+
+%inline optional_type_params(X):
+  | loptioninline(type_param_group(nonempty_comma_list(X))) { $1 }
 
 %%
