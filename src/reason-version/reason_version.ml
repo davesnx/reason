@@ -150,7 +150,7 @@ module Ast_nodes = struct
 
   let inject_attr_from_version_impl itms =
     let insert_after = function
-      | {pstr_desc = Pstr_attribute {attr_name = {loc; txt="ocaml.doc"|"ocaml.text"}}} -> true
+      | {pstr_desc = Pstr_attribute {attr_name = {txt="ocaml.doc"|"ocaml.text"; _}; _}; _} -> true
       | _ -> false
     in
     let creator = (fun ~loc x -> Str.mk ~loc (Pstr_attribute x)) in
@@ -158,7 +158,7 @@ module Ast_nodes = struct
 
   let inject_attr_from_version_intf itms =
     let insert_after = function
-      | {psig_desc = Psig_attribute {attr_name = {loc; txt="ocaml.doc"|"ocaml.text"}}} -> true
+      | {psig_desc = Psig_attribute {attr_name = {txt="ocaml.doc"|"ocaml.text"; _}}} -> true
       | _ -> false
     in
     let creator = (fun ~loc x -> Sig.mk ~loc (Psig_attribute x)) in
@@ -168,12 +168,12 @@ module Ast_nodes = struct
     (match structure_item with
     | {pstr_desc=(Pstr_attribute {
         attr_name={txt="reason.version"; _};
-        attr_payload = PStr [{pstr_desc=Pstr_eval({pexp_desc=Pexp_constant(Pconst_float(v, _))},_)}];
+        attr_payload = PStr [{pstr_desc=Pstr_eval({pexp_desc=Pexp_constant(Pconst_float(v, _)); _},_); _}];
         _
-      })} ->
+      }); _} ->
        (match _split_on_char '.' v with
        | [maj] | [maj; ""] -> Some (int_of_string maj, 0)
-       | maj :: mnr :: tl -> Some (int_of_string maj, int_of_string mnr)
+       | maj :: mnr :: _ -> Some (int_of_string maj, int_of_string mnr)
        | _ -> None);
     | _ -> None)
 
@@ -181,12 +181,12 @@ module Ast_nodes = struct
     (match sig_item with
     | {psig_desc=(Psig_attribute {
         attr_name={txt="reason.version"; _};
-        attr_payload = PStr [{pstr_desc=Pstr_eval({pexp_desc=Pexp_constant(Pconst_float(v, _))},_)}];
+        attr_payload = PStr [{pstr_desc=Pstr_eval({pexp_desc=Pexp_constant(Pconst_float(v, _)); _},_); _}];
         _
-      })} ->
+      }); _} ->
        (match _split_on_char '.' v with
        | [maj] | [maj; ""] -> Some (int_of_string maj, 0)
-       | maj :: mnr :: tl -> Some (int_of_string maj, int_of_string mnr)
+       | maj :: mnr :: _ -> Some (int_of_string maj, int_of_string mnr)
        | _ -> None);
     | _ -> None)
 end
